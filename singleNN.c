@@ -51,7 +51,7 @@ void main()
     float rate = 1e-3;
     float c;
 
-    int train_count = 500;
+    int train_count = 50000;
     for(int i = 0; i<train_count; i++)
     {
         c = cost(w,b);

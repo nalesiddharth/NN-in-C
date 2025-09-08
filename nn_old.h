@@ -16,32 +16,19 @@
 #define NN_ASSERT assert
 #endif
 
-typedef struct
-{
+typedef struct {
     int rows;
     int cols;
     int stride;
     float *data;
 } mat;
 
-typedef struct
-{
-
-    int count;
-    mat *w; // weights
-    mat *b; // biases
-    mat *a; // activations
-} nn;
-
 #define MAT_AT(m, i, j) (m).data[(i) * (m).stride + (j)]
 #define MAT_PRINT(m) mat_print(m, #m)
 
-#define ARRAY_LEN(a) sizeof((a)) / sizeof((a)[0])
-#define NN_PRINT(net) nn_print(net, #net)
-
 float rand_float(void);
 float sigmoidf(float x);
-
+ 
 mat mat_alloc(int rows, int cols);
 void mat_init(mat m, float n);
 void mat_rand(mat m, int lo, int hi);
@@ -52,15 +39,15 @@ void mat_sigmoidf(mat m);
 mat mat_getRow(mat m, int row);
 void mat_cpy(mat dest, mat src);
 
-nn nn_alloc(int *arch, int arch_count);
-nn nn_print(nn net, const char *name);
-void nn_rand(nn net, int lo, int hi);
-
 #endif // NN_H
+
+
+
+
 
 #ifdef NN_IMPLEMENTATION
 
-    float rand_float(void)
+float rand_float(void)
 {
     return (float)rand() / (float)RAND_MAX;
 }
@@ -123,15 +110,14 @@ void mat_add(mat res, mat a)
 
 void mat_print(mat m, const char *name)
 {
-    printf("    %s = [\n", name);
+    printf("%s = [\n", name);
     for (int i = 0; i < m.rows; i++)
     {
-        printf("    ");
         for (int j = 0; j < m.cols; j++)
             printf("  %f ", MAT_AT(m, i, j));
         printf("\n");
     }
-    printf("    ]\n\n");
+    printf("]\n\n");
 }
 
 void mat_sigmoidf(mat m)
@@ -162,67 +148,5 @@ void mat_cpy(mat dest, mat src)
             MAT_AT(dest, i, j) = MAT_AT(src, i, j);
 }
 
-
-
-
-nn nn_alloc(int *arch, int arch_count)
-{
-    NN_ASSERT(arch_count > 0);
-    nn net;
-
-    net.count = arch_count - 1;
-    net.w = malloc(sizeof(net.w) * net.count);
-    NN_ASSERT(net.w != NULL);
-    net.b = malloc(sizeof(*net.b) * net.count);
-    NN_ASSERT(net.b != NULL);
-    net.a = malloc(sizeof(*net.a) * arch_count);
-    NN_ASSERT(net.a != NULL);
-
-    net.a[0] = mat_alloc(1, arch[0]);
-    for (int i = 1; i < arch_count; i++)
-    {
-        net.w[i - 1] = mat_alloc(net.a[i - 1].cols, arch[i]);
-        net.b[i - 1] = mat_alloc(1, arch[i]);
-        net.a[i] = mat_alloc(1, arch[i]);
-    }
-
-    return net;
-}
-
-nn nn_print(nn net, const char *name)
-{
-    char buf[256];
-    printf("\n\n%s:", name);
-    printf("\nWeights: \n");
-    for (int i = 0; i < net.count; i++)
-    {
-        snprintf(buf, sizeof(buf), "w[%d]", i);
-        mat_print(net.w[i], buf);
-    }
-    printf("\nBiases: \n");
-    for (int i = 0; i < net.count; i++)
-    {
-        snprintf(buf, sizeof(buf), "b[%d]", i);
-        mat_print(net.b[i], buf);
-    }
-    printf("\nActivations: \n");
-    mat_print(net.a[0], "a[0]");
-    for (int i = 1; i <= net.count; i++)
-    {
-        snprintf(buf, sizeof(buf), "a[%d]", i);
-        mat_print(net.a[i], buf);
-    }
-}
-
-void nn_rand(nn net, int lo, int hi)
-{
-    mat_rand(net.a[0], lo, hi);
-    for (int i = 0; i < net.count; i++)
-    {
-        mat_rand(net.w[i], lo, hi);
-        mat_rand(net.b[i], lo, hi);
-        mat_rand(net.a[i+1], lo, hi);
-    }
-}
 
 #endif // NN_IMPLEMENTATION

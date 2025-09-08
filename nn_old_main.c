@@ -1,7 +1,7 @@
 #define NN_IMPLEMENTATION
 #include <stdio.h>
 #include <time.h>
-#include "nn.h"
+#include "nn_old.h"
 
 float or_data[] = {
     0.0f, 0.0f, 0.0f, 
@@ -29,7 +29,6 @@ float xor_data[] = {
 
 typedef struct{
     mat a0;
-
     mat w1, b1, a1;
     mat w2, b2, a2;
 } xor;
