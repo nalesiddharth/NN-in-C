@@ -38,6 +38,8 @@ typedef struct
 
 #define ARRAY_LEN(a) sizeof((a)) / sizeof((a)[0])
 #define NN_PRINT(net) nn_print(net, #net)
+#define NN_INPUT_MAT(nn) (nn).a[0]
+#define NN_OUTPUT_MAT(nn) (nn).a[(nn).count]
 
 float rand_float(void);
 float sigmoidf(float x);
@@ -55,6 +57,10 @@ void mat_cpy(mat dest, mat src);
 nn nn_alloc(int *arch, int arch_count);
 nn nn_print(nn net, const char *name);
 void nn_rand(nn net, int lo, int hi);
+void nn_forward(nn net);
+float nn_cost(nn net, mat tin, mat tout);
+void nn_finite_diff(nn net, nn gradients, float eps, mat tin, mat tout);
+void nn_learn(nn net, nn gradients, float rate);
 
 #endif // NN_H
 
@@ -216,12 +222,86 @@ nn nn_print(nn net, const char *name)
 
 void nn_rand(nn net, int lo, int hi)
 {
-    mat_rand(net.a[0], lo, hi);
     for (int i = 0; i < net.count; i++)
     {
         mat_rand(net.w[i], lo, hi);
         mat_rand(net.b[i], lo, hi);
-        mat_rand(net.a[i+1], lo, hi);
+        // mat_rand(net.a[i+1], lo, hi); Activation matrices don't need initialization. I think.
+    }
+}
+
+void nn_forward(nn net)
+{
+    for (int i = 0; i < net.count; i++)
+    {
+        mat_mult(net.a[i + 1], net.a[i], net.w[i]);
+        mat_add(net.a[i + 1], net.b[i]);
+        mat_sigmoidf(net.a[i + 1]);
+    }
+}
+
+float nn_cost(nn net, mat tin, mat tout)
+{
+    NN_ASSERT(tin.rows == tout.rows);
+    NN_ASSERT(tout.cols == NN_OUTPUT_MAT(net).cols);
+    float c = 0.0f;
+    for (int i = 0; i < tin.rows; i++)
+    {
+        mat x = mat_getRow(tin, i);  // expected input
+        mat y = mat_getRow(tout, i); // expected output
+        mat_cpy(net.a[0], x);
+        nn_forward(net);
+        printf("\nloop iterations = %d", tout.cols);
+        for (int j = 0; j < tout.cols; j++) // loop only runs once here, but in the future, for multidimensional outputs (ie. outputs with multiple cols) the loop is necessary
+        {
+            float d = MAT_AT(NN_OUTPUT_MAT(net), 0, j) - MAT_AT(y, 0, j);
+            c += d * d;
+        }
+    }
+}
+
+void nn_finite_diff(nn net, nn gradients, float eps, mat tin, mat tout)
+{
+
+    float temp;
+    float cost = nn_cost(net, tin, tout);
+    for (int i = 0; i < net.count; i++)
+    {
+        for (int j = 0; j < net.w[i].rows; j++)
+        {
+            for (int k = 0; k < net.w[i].cols; k++)
+            {
+                temp = MAT_AT(net.w[i], j, k);
+                MAT_AT(net.w[i], j, k) += eps;
+                MAT_AT(gradients.w[i], j, k) = (nn_cost(net, tin, tout) - cost) / eps;
+                MAT_AT(net.w[i], j, k) = temp;
+            }
+        }
+
+        for (int j = 0; j < net.b[i].rows; j++)
+        {
+            for (int k = 0; k < net.b[i].cols; k++)
+            {
+                temp = MAT_AT(net.b[i], j, k);
+                MAT_AT(net.b[i], j, k) += eps;
+                MAT_AT(gradients.b[i], j, k) = (nn_cost(net, tin, tout) - cost) / eps;
+                MAT_AT(net.b[i], j, k) = temp;
+            }
+        }
+    }
+}
+
+void nn_learn(nn net, nn gradients, float rate)
+{
+    for (int i = 0; i < net.count; i++)
+    {
+        for (int j = 0; j < net.w[i].rows; j++)
+            for (int k = 0; k < net.w[i].cols; k++)
+                MAT_AT(net.w[i], j, k) -= rate * MAT_AT(gradients.w[i], j, k);
+
+        for (int j = 0; j < net.b[i].rows; j++)
+            for (int k = 0; k < net.b[i].cols; k++)
+                MAT_AT(net.b[i], j, k) -= rate * MAT_AT(gradients.b[i], j, k);
     }
 }
 

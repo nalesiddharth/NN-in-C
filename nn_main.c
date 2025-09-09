@@ -56,13 +56,14 @@ typedef struct
 xor xor_alloc()
 {
     xor m;
-    m.a0 = mat_alloc(1, 2);
+    //m.a0 = mat_alloc(1, 2);
     m.w1 = mat_alloc(2, 2);
     m.b1 = mat_alloc(1, 2);
-    m.a1 = mat_alloc(1, 2);
+    //m.a1 = mat_alloc(1, 2);
     m.w2 = mat_alloc(2, 1);
     m.b2 = mat_alloc(1, 1);
-    m.a2 = mat_alloc(1, 1);
+    //m.a2 = mat_alloc(1, 1);
+    //Activation matrices don't need initialization. I think.
     return m;
 }
 
@@ -81,16 +82,6 @@ float forward_xor(xor m)
     return y;
 }
 
-void nn_forward(nn net)
-{
-    for (int i = 0; i < net.count; i++)
-    {
-        mat_mult(net.a[i + 1], net.a[i], net.w[i]);
-        mat_add(net.a[i + 1], net.b[i]);
-        mat_sigmoidf(net.a[i + 1]);
-    }
-}
-
 float cost(xor m)
 {
     NN_ASSERT(tin.rows == tout.rows);
@@ -103,11 +94,11 @@ float cost(xor m)
         mat_cpy(m.a0, x);
         forward_xor(m);
 
-        for (int j = 0; j < tout.cols; j++)
+        for (int j = 0; j < tout.cols; j++) //loop only runs once here, but in the future, for multidimensional outputs (ie. outputs with multiple cols) the loop is necessary
         {
             float d = MAT_AT(m.a2, 0, j) - MAT_AT(y, 0, j);
             c += d * d;
-        }
+        } 
     }
     c /= tin.rows;
     return c;
@@ -192,49 +183,23 @@ int main()
     
     int arch[] = {2, 2, 1};
     nn xornet = nn_alloc(arch, ARRAY_LEN(arch));
-    nn_rand(xornet, 0.0f,1.0f);
-    NN_PRINT(xornet);
+    nn xor_g = nn_alloc(arch, ARRAY_LEN(arch));
+    nn_rand(xornet, 0, 1);
     
-    xor m = xor_alloc();
-    xor g = xor_alloc();
-    
-    mat_rand(m.w1, 0, 1);
-    mat_rand(m.b1, 0, 1);
-    mat_rand(m.w2, 0, 1);
-    mat_rand(m.b2, 0, 1);
-    
-    // MAT_PRINT(tin);
-    // MAT_PRINT(tout);
-    // MAT_PRINT(m.w1);
-    // MAT_PRINT(m.b1);
-    // MAT_PRINT(m.w2);
-    // MAT_PRINT(m.b2);
 
-#if 0 
-    printf("\ncost = %f", cost(m));
-    int train_count = 30000;
+    //mat_cpy(NN_INPUT_MAT(xornet), mat_getRow(tin, 1));
+    printf("\ncost = %f", nn_cost(xornet, tin, tout));
+    #if 0
+    int train_count = 100;
     for (int i = 0; i < train_count; i++)
     {
-        finite_diff(m, g, eps);
-        xor_learn(m, g, rate);
+        nn_finite_diff(xornet, xor_g, eps, tin, tout);
+        nn_learn(xornet, xor_g, rate);
         if (i % (train_count / 10) == 0)
-            printf("\ncost = %f", cost(m));
+            printf("\ncost = %f", nn_cost(xornet, tin, tout));
     }
-
-    printf("\n\nInference: \n");
-    for (int i = 0; i < 2; i++)
-    {
-        for (int j = 0; j < 2; j++)
-        {
-            MAT_AT(m.a0, 0, 0) = i;
-            MAT_AT(m.a0, 0, 1) = j;
-            printf("%d ^ %d = %f", i, j, forward_xor(m));
-            printf("\n");
-        }
-    }
-
-    printf("\nCost = %f", cost(m));
-#endif
+    #endif
+    nn_finite_diff(xornet, xor_g, eps, tin, tout);
 
     return 0;
 }
