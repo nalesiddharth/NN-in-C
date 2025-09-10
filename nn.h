@@ -245,19 +245,21 @@ float nn_cost(nn net, mat tin, mat tout)
     NN_ASSERT(tin.rows == tout.rows);
     NN_ASSERT(tout.cols == NN_OUTPUT_MAT(net).cols);
     float c = 0.0f;
+    float d;
     for (int i = 0; i < tin.rows; i++)
     {
         mat x = mat_getRow(tin, i);  // expected input
         mat y = mat_getRow(tout, i); // expected output
-        mat_cpy(net.a[0], x);
+        mat_cpy(NN_INPUT_MAT(net), x);
         nn_forward(net);
-        printf("\nloop iterations = %d", tout.cols);
         for (int j = 0; j < tout.cols; j++) // loop only runs once here, but in the future, for multidimensional outputs (ie. outputs with multiple cols) the loop is necessary
         {
-            float d = MAT_AT(NN_OUTPUT_MAT(net), 0, j) - MAT_AT(y, 0, j);
+            d = MAT_AT(NN_OUTPUT_MAT(net), 0, j) - MAT_AT(y, 0, j);
+            //printf("d in cost: %d\n");
             c += d * d;
         }
     }
+    return c;
 }
 
 void nn_finite_diff(nn net, nn gradients, float eps, mat tin, mat tout)

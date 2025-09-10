@@ -27,24 +27,35 @@ float xor_data[] = {
     1.0f, 0.0f, 1.0f,
     1.0f, 1.0f, 0.0f};
 
+float a2[] = {
+    0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 1.0f, 0.0f,
+    1.0f, 0.0f, 1.0f, 0.0f,
+    1.0f, 1.0f, 0.0f, 1.0f
+};
 
+float td[] = {
+    1.0f, 3.0f,
+    2.0f, 7.0f,
+    3.0f, 13.0f,
+    4.0f, 21.0f,
+    5.0f, 31.0f};
 
 const int stride = 3;
 const int n = sizeof(xor_data) / sizeof(xor_data[0]);
 const int row_count = n / stride;
 
-
 mat tin = {
     .rows = row_count,
     .cols = 2,
     .stride = stride,
-    .data = and_data};
+    .data = xor_data};
 
 mat tout = {
     .rows = row_count,
     .cols = 1,
     .stride = stride,
-    .data = and_data + 2};
+    .data = xor_data + 2};
 
 typedef struct
 {
@@ -177,7 +188,6 @@ int main()
 
     srand(time(0));
 
-    
     float eps = 1e-1;
     float rate = 1e-1;
     
@@ -186,11 +196,8 @@ int main()
     nn xor_g = nn_alloc(arch, ARRAY_LEN(arch));
     nn_rand(xornet, 0, 1);
     
-
-    //mat_cpy(NN_INPUT_MAT(xornet), mat_getRow(tin, 1));
     printf("\ncost = %f", nn_cost(xornet, tin, tout));
-    #if 0
-    int train_count = 100;
+    int train_count = 10000;
     for (int i = 0; i < train_count; i++)
     {
         nn_finite_diff(xornet, xor_g, eps, tin, tout);
@@ -198,8 +205,20 @@ int main()
         if (i % (train_count / 10) == 0)
             printf("\ncost = %f", nn_cost(xornet, tin, tout));
     }
-    #endif
-    nn_finite_diff(xornet, xor_g, eps, tin, tout);
 
+    printf("\n\nInference: \n");
+    #if 1
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = 0; j < 2; j++)
+        {
+            MAT_AT(NN_INPUT_MAT(xornet), 0, 0) = i;
+            MAT_AT(NN_INPUT_MAT(xornet), 0, 1) = j;
+            nn_forward(xornet);
+            printf("%d ^ %d = %f", i, j, MAT_AT(NN_OUTPUT_MAT(xornet), 0, 0), MAT_AT(NN_OUTPUT_MAT(xornet), 0, 1));
+            printf("\n");
+        }
+    }
+    #endif
     return 0;
 }
