@@ -186,25 +186,32 @@ void xor_learn(xor m, xor g, float rate)
 int main()
 {
 
-    srand(time(0));
-
+    //srand(time(0));
+    srand(69);
     float eps = 1e-1;
-    float rate = 1e-1;
+    float rate = 1;
     
     int arch[] = {2, 2, 1};
     nn xornet = nn_alloc(arch, ARRAY_LEN(arch));
     nn xor_g = nn_alloc(arch, ARRAY_LEN(arch));
     nn_rand(xornet, 0, 1);
-    
     printf("\ncost = %f", nn_cost(xornet, tin, tout));
-    int train_count = 10000;
+    int train_count = 1000;
+    
     for (int i = 0; i < train_count; i++)
     {
+        #if 0
         nn_finite_diff(xornet, xor_g, eps, tin, tout);
+        #else
+        nn_backprop(xornet, xor_g, tin, tout);
+        #endif
+        //NN_PRINT(xor_g);
         nn_learn(xornet, xor_g, rate);
         if (i % (train_count / 10) == 0)
             printf("\ncost = %f", nn_cost(xornet, tin, tout));
     }
+
+
 
     printf("\n\nInference: \n");
     #if 1

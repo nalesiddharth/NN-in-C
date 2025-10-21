@@ -55,12 +55,15 @@ mat mat_getRow(mat m, int row);
 void mat_cpy(mat dest, mat src);
 
 nn nn_alloc(int *arch, int arch_count);
+void nn_init(nn net, float n);
 nn nn_print(nn net, const char *name);
 void nn_rand(nn net, int lo, int hi);
 void nn_forward(nn net);
 float nn_cost(nn net, mat tin, mat tout);
 void nn_finite_diff(nn net, nn gradients, float eps, mat tin, mat tout);
 void nn_learn(nn net, nn gradients, float rate);
+
+void nn_backprop(nn net, nn gradients, mat tin, mat tout);
 
 #endif // NN_H
 
@@ -161,15 +164,12 @@ mat mat_getRow(mat m, int row)
 
 void mat_cpy(mat dest, mat src)
 {
-    NN_ASSERT(dest.rows = src.rows);
-    NN_ASSERT(dest.cols = src.cols);
+    NN_ASSERT(dest.rows == src.rows);
+    NN_ASSERT(dest.cols == src.cols);
     for (int i = 0; i < src.rows; i++)
         for (int j = 0; j < src.cols; j++)
             MAT_AT(dest, i, j) = MAT_AT(src, i, j);
 }
-
-
-
 
 nn nn_alloc(int *arch, int arch_count)
 {
@@ -177,7 +177,7 @@ nn nn_alloc(int *arch, int arch_count)
     nn net;
 
     net.count = arch_count - 1;
-    net.w = malloc(sizeof(net.w) * net.count);
+    net.w = malloc(sizeof(*net.w) * net.count);
     NN_ASSERT(net.w != NULL);
     net.b = malloc(sizeof(*net.b) * net.count);
     NN_ASSERT(net.b != NULL);
@@ -193,6 +193,17 @@ nn nn_alloc(int *arch, int arch_count)
     }
 
     return net;
+}
+
+void nn_init(nn net, float n)
+{
+    for(int i = 0; i<net.count; i++)
+    {
+        mat_init(net.w[i], n);
+        mat_init(net.b[i], n);
+        mat_init(net.a[i], n);
+    }
+    mat_init(net.a[net.count], n);
 }
 
 nn nn_print(nn net, const char *name)
@@ -252,7 +263,7 @@ float nn_cost(nn net, mat tin, mat tout)
         mat y = mat_getRow(tout, i); // expected output
         mat_cpy(NN_INPUT_MAT(net), x);
         nn_forward(net);
-        for (int j = 0; j < tout.cols; j++) // loop only runs once here, but in the future, for multidimensional outputs (ie. outputs with multiple cols) the loop is necessary
+        for (int j = 0; j < tout.cols; j++) // loop only runs once in case of arch=(2, 2, 1), but in the future, for multidimensional outputs (ie. outputs with multiple cols) the loop is necessary
         {
             d = MAT_AT(NN_OUTPUT_MAT(net), 0, j) - MAT_AT(y, 0, j);
             //printf("d in cost: %d\n");
@@ -293,6 +304,57 @@ void nn_finite_diff(nn net, nn gradients, float eps, mat tin, mat tout)
     }
 }
 
+void nn_backprop(nn net, nn gradients, mat tin, mat tout)
+{
+    NN_ASSERT(tin.rows == tout.rows);
+    NN_ASSERT(NN_OUTPUT_MAT(net).cols == tout.cols);
+    int n = tin.rows; 
+    nn_init(gradients, 0.0f);
+
+    for(int i = 0; i<n; i++) //iterating through the samples
+    {
+        mat_cpy(NN_INPUT_MAT(net), mat_getRow(tin, i));
+        nn_forward(net);
+
+        for(int j = 0; j<gradients.count; j++) //resetting the gradient activations to 0 to avoid unnecessary accumulation 
+            mat_init(gradients.a[j], 0.0f);
+        
+        for(int j = 0; j<tin.cols; j++)
+        {   //The activation layer of the gradient NN can be used as an intermediate storage since it is unused (and wasted) in the finite difference implementation.
+            //Here we initialize the backprop by setting the last layer's actual vs expected difference. The rest will be calculated further inside the loops.
+            MAT_AT(NN_OUTPUT_MAT(gradients), 0, j) = MAT_AT(NN_OUTPUT_MAT(net), 0, j) - MAT_AT(tout, i, j);
+        }
+
+        for(int l = net.count-1; l>=0; l--) //iterating through the layers. A little dicey to understand because of count(activations) == count(weight)+1, but that's how the indexing system of the architecture inherently works.
+        {
+            for(int j = 0; j<net.a[l+1].cols; j++) //iterating through each neuron of the layer.
+            {
+                float a = MAT_AT(net.a[l+1], 0, j);
+                float da = MAT_AT(gradients.a[l+1], 0, j);
+                float di = 2*da*a*(1-a);
+                MAT_AT(gradients.b[l], 0, j) += di;
+                for(int k = 0; k<net.a[l].cols; k++) // iterating/accessing the parameters of each neuron from the last layer
+                {
+                    MAT_AT(gradients.w[l], k, j) += (di * MAT_AT(net.a[l], 0, k));
+                    MAT_AT(gradients.a[l], 0, k) += (di * MAT_AT(net.w[l], k, j));
+                }
+            }
+        }
+    }
+
+    //calculating average gradients. Excuse the confusion, I wanted to use as few nested loops as possible
+    for(int i = 0; i<gradients.count; i++)
+    {
+        NN_ASSERT(gradients.w[i].cols == gradients.b[i].cols);
+        for(int j=0; j<gradients.w[i].cols; j++)
+        {
+            MAT_AT(gradients.b[i], 0, j) /= n; //calculated here since bias matrix only ever has 1 row
+            for(int k = 0; k<gradients.w[i].rows; k++)
+                MAT_AT(gradients.w[i], k, j) /= n;
+        }
+    }
+}
+
 void nn_learn(nn net, nn gradients, float rate)
 {
     for (int i = 0; i < net.count; i++)
@@ -306,5 +368,8 @@ void nn_learn(nn net, nn gradients, float rate)
                 MAT_AT(net.b[i], j, k) -= rate * MAT_AT(gradients.b[i], j, k);
     }
 }
+
+
+
 
 #endif // NN_IMPLEMENTATION
