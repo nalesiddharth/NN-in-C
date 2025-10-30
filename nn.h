@@ -5,6 +5,7 @@
 #include <time.h>
 #include <math.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #ifndef NN_MALLOC
 #include <stdlib.h>

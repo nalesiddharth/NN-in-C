@@ -11,11 +11,6 @@ const int op_stride = NBITS + 1;
 const int row_count = (1<<NBITS)*(1<<NBITS);
 
 
-void gen_data()
-{
-    
-}
-
 void main()
 {
     float training_input[row_count * ip_stride];
@@ -93,8 +88,6 @@ void main()
         nn_learn(addnet, g, rate);
         if (i % (train_count / 100) == 0)
             printf("\ncost = %f", nn_cost(addnet, tin, tout));
-
-        
     }
     printf("\n\n");
     //MAT_PRINT(tin);
