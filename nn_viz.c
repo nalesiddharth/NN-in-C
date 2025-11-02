@@ -7,25 +7,39 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+float xor_data[] = {
+    0.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 1.0f,
+    1.0f, 0.0f, 1.0f,
+    1.0f, 1.0f, 0.0f};
+
+const int stride = 3;
+const int n = sizeof(xor_data) / sizeof(xor_data[0]);
+const int row_count = n / stride;
+
+mat tin = {
+    .rows = row_count,
+    .cols = 2,
+    .stride = stride,
+    .data = xor_data};
+
+mat tout = {
+    .rows = row_count,
+    .cols = 1,
+    .stride = stride,
+    .data = xor_data + 2};
 
 #define IMG_X 800
 #define IMG_Y 600
 
 uint32_t img_pixels[IMG_X*IMG_Y];
 
-int main(void)
+int nn_render(Olivec_Canvas img, nn net, int *arch, int arch_count)
 {
-    srand(time(0));
-    int arch[] = {2, 4, 3, 1};
-    int arch_count = ARRAY_LEN(arch);
-    nn net = nn_alloc(arch, arch_count);
-    nn_rand(net, -1, 1);
-    NN_PRINT(net);
-
     //ABGR color format
     uint32_t bg_col = 0xFF472D0F;
-    uint32_t conn_col = 0xFF00FF00;
-    Olivec_Canvas img = olivec_canvas(img_pixels, IMG_X, IMG_Y, IMG_X);
+    uint32_t low_col = 0x00FF00FF;
+    uint32_t high_col = 0x0000FF00;
     olivec_fill(img, bg_col);
     
     //calculating neuron draw positions
@@ -47,18 +61,21 @@ int main(void)
             if(l+1<arch_count)
             {
                 int layer_vpad2 = net_height/arch[l+1];
-                for(int j = 0; j< arch[l+1]; j++)
+                for(int j = 0; j<arch[l+1]; j++) //iterating through all of next layer's neurons
                 {
                     int cx2 = net_x + (l+1)*layer_hpad + layer_hpad/2;
                     int cy2 = net_y + j*layer_vpad2 + layer_vpad2/2;
+                    uint32_t alpha = floorf(255*sigmoidf(MAT_AT(net.w[l], j, i)));
+                    uint32_t conn_col = 0xFF000000 | low_col;
+                    olivec_blend_color(&conn_col, (alpha<<(8*3)) | high_col);
                     olivec_line(img, cx1, cy1, cx2, cy2, conn_col);
                 }
             }
-            if(l>0)
+            if(l>0) //offset drawing of actual NN since input "neurons" need to be drawn
             {
-                uint32_t s = floorf(255.f*sigmoidf(MAT_AT(net.b[l-1], 0, 1)));
-                uint32_t n_col = 0xFF0000FF;
-                olivec_blend_color(&n_col, (s<<(8*3))|0x0000FF00);
+                uint32_t s = floorf(255.f*sigmoidf(MAT_AT(net.b[l-1], 0, i)));
+                uint32_t n_col = 0xFF000000 | low_col;
+                olivec_blend_color(&n_col, (s<<(8*3))| high_col);
                 olivec_circle(img, cx1, cy1, n_rad, n_col);
             }
             else
@@ -70,16 +87,44 @@ int main(void)
     uint32_t frame_col = 0xFF642D11;
     uint32_t frame_thick = 10;
     olivec_frame(img, 0, 0, IMG_X-1, IMG_Y-1, frame_thick, frame_col);
+}
+
+int main(void)
+{
+    srand(69);
+    float rate = 1;
+    int arch[] = {2, 2, 1};
+    int arch_count = ARRAY_LEN(arch);
+    nn xornet = nn_alloc(arch, arch_count);
+    nn xor_g = nn_alloc(arch, ARRAY_LEN(arch));
+    nn_rand(xornet, -1, 1);
     
-    const char *img_path = "./vizns/nn.png";
-    if(!stbi_write_png(img_path, img.width, img.height, 4, img.pixels, img.stride*sizeof(uint32_t)))
+    int train_count = 1000;
+    
+    printf("\ncost = %f", nn_cost(xornet, tin, tout));
+    int frameIndex = 0;
+    for (int i = 0; i < train_count; i++)
     {
-        printf("ERROR while saving file: %s", img_path);
-        return 1;
+        nn_backprop(xornet, xor_g, tin, tout);
+        nn_learn(xornet, xor_g, rate);
+        if (i % (train_count / 10) == 0)
+            printf("\ncost = %f", nn_cost(xornet, tin, tout));
+        if (i % (train_count / 100) == 0)
+        {
+            Olivec_Canvas img = olivec_canvas(img_pixels, IMG_X, IMG_Y, IMG_X);
+            nn_render(img, xornet, arch, arch_count);
+            char img_op_path[256];
+            snprintf(img_op_path, sizeof(img_op_path), "./vizns/xor-%02d.png", frameIndex);
+            if(!stbi_write_png(img_op_path, img.width, img.height, 4, img.pixels, img.stride*sizeof(uint32_t)))
+                printf("\nERROR while saving file: %s", img_op_path);
+            else
+            {
+                printf("\nImage save successfull at %s", img_op_path);
+                frameIndex++;
+            }
+        }
     }
-    else
-    {
-        printf("Image save successfull at %s", img_path);
-    }
+
+    
     return 0;
 }

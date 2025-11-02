@@ -271,7 +271,7 @@ float nn_cost(nn net, mat tin, mat tout)
             c += d * d;
         }
     }
-    return c;
+    return c / tin.rows;
 }
 
 void nn_finite_diff(nn net, nn gradients, float eps, mat tin, mat tout)
