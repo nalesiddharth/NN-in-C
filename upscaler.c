@@ -19,7 +19,7 @@ void train_nn(nn net, nn g, int n, mat tin, mat tout)
         nn_backprop(net, g, tin, tout);
         //nn_finite_diff(net, g, .01f, tin, tout);
         nn_learn(net, g, rate);
-        if (i % (n / 100) == 0)
+        if (i % (n / 10) == 0)
             printf("\ncost = %f", nn_cost(net, tin, tout));
 
     }
@@ -27,7 +27,7 @@ void train_nn(nn net, nn g, int n, mat tin, mat tout)
 
 int main()
 {
-    char *img_path = "./MNIST/train/8/260.png";
+    char *img_path = "./MNIST/train/5/165.png";
     printf("%s", img_path);
     int img_width, img_height, img_comp;
     uint8_t *img_pixels = (uint8_t *) stbi_load(img_path, &img_width, &img_height, &img_comp, 0);
@@ -82,7 +82,7 @@ int main()
 
 
     srand(0);
-    int arch[] = {2, 8, 4, 2, 1};
+    int arch[] = {2, 14, 7, 1};
     int arch_count = ARRAY_LEN(arch);
     nn net = nn_alloc(arch, arch_count);
     nn g = nn_alloc(arch, ARRAY_LEN(arch));
@@ -90,12 +90,12 @@ int main()
 
     printf("\ncost = %f", nn_cost(net, tin, tout));
 
-    int train_count = 200000;
+    int train_count = 100000;
     train_nn(net, g, train_count, tin, tout);
     printf("\n");
 
-    int out_width = 512;
-    int out_height = 512;
+    int out_width = 2048;
+    int out_height = 2048;
     uint8_t *out_pixels = malloc(sizeof(*out_pixels)*out_height*out_width);
     for(int y = 0; y<out_height; y++)
     {
@@ -116,11 +116,5 @@ int main()
     }
 
     printf("\nUpscaled image saved as %s", out_path);
-
-
-
-
-
-    
     return 0;
 }

@@ -1,13 +1,12 @@
 #include <stdio.h>
+#include <time.h>
+#include <stdlib.h>
+#include <unistd.h>
 void main()
 {
-    float a = 3.0f;
-    float da = 2.0f;
-    float di = 2*da*a*(1-a);
-    float c = 2.0f;
-    c += di;
-    float d = 2.0f;
-    d += 2*da*a*(1-a);
-    printf("\n%f", c);
-    printf("\n%f", d);
+    int f1 = time(0);
+    sleep(10);
+    int f2 = time(0);
+    int f3 = f2-f1;
+    printf("TimeDiff = %d\n%d\n= %d", f1, f2, f3);
 }
