@@ -320,7 +320,7 @@ int main(void)
 {
     double t_start = omp_get_wtime();
 
-    char *img_path = "./MNIST/train/5/165.png";
+    char *img_path = "./Mosquitoes/Downscaled/aegypti1b.png";
     int img_width, img_height, img_comp;
     uint8_t *img_pixels_in = stbi_load(img_path, &img_width, &img_height, &img_comp, 0);
     if (!img_pixels_in) {
@@ -357,12 +357,12 @@ int main(void)
     printf("Initial cost = %f\n", nn_cost(net, tin, tout));
 
     // Train: 20000 epochs, save 100 frames
-    const int epochs = 20000;
+    const int epochs = 100000;
     const int frames = 100;
     train_nn_mt_vis(net, g, epochs, tin, tout, arch, arch_count, frames);
 
     // Produce final upscaled image (512x512 grayscale)
-    const int out_w = 512, out_h = 512;
+    const int out_w = 2048, out_h = 2048;
     uint8_t *out_pixels = malloc(out_w * out_h);
     if (!out_pixels) {
         fprintf(stderr, "Failed to allocate output image\n");
