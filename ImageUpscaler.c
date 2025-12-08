@@ -320,7 +320,7 @@ int main(void)
 {
     double t_start = omp_get_wtime();
 
-    char *img_path = "./Mosquitoes/Downscaled/aegypti1b.png";
+    char *img_path = "./MNIST/train/6/11.png";
     int img_width, img_height, img_comp;
     uint8_t *img_pixels_in = stbi_load(img_path, &img_width, &img_height, &img_comp, 0);
     if (!img_pixels_in) {
