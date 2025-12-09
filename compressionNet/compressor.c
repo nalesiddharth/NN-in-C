@@ -3,6 +3,7 @@
 // Hardcoded settings at top. Uses nn.h, stb_image, stb_image_write, and olive.c for visualization.
 // Adapted from ImageUpscaler.c (visualization + training) to integrate into compressor pipeline.
 // See: ImageUpscaler.c for original visuals and training helper code. :contentReference[oaicite:7]{index=7}
+// compile with: gcc compressor.c -o compressor -fopenmp -lm
 
 #include <stdio.h>
 #include <stdlib.h>
